@@ -9,8 +9,7 @@ import { mkdirSync } from "fs";
 import { BASE_DIR } from "./constants.js";
 
 // ─── Credenciales secundarias (service accounts) ──────────────────
-export const GOOGLE_CREDENTIALS_PATH      = join(BASE_DIR, "credencials", "keepcheck-ed7a4809943d.json");
-export const GEMINI_SERVICE_ACCOUNT_PATH  = join(BASE_DIR, "credencials", "gen-lang-client-0677388385-17654388352e.json");
+export const GEMINI_SERVICE_ACCOUNT_PATH  = join(BASE_DIR, "credencials", "ypur_service_acount_credentials.json");
 
 // ─── Salida de archivos ───────────────────────────────────────────
 export const OUTPUT_DIR = join(BASE_DIR, "examples", "output");
