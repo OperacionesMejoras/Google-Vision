@@ -10,7 +10,7 @@ export const EXAMPLES_DIR = join(__dirname, "../..");   // examples/
 export const BASE_DIR     = join(EXAMPLES_DIR, "..");   // raíz del proyecto
 
 // ─── Credenciales ─────────────────────────────────────────────
-const creds = JSON.parse(readFileSync(join(BASE_DIR, "credencials", "cred.json"), "utf-8"));
+const creds = JSON.parse(readFileSync(join(BASE_DIR, "credencials", "your_credential_file.json"), "utf-8"));
 
 export const GOOGLE_VISION_API_KEY = creds.GOOGLE_VISION_API_KEY;
 export const GOOGLE_VISION_ENDPOINT = `https://vision.googleapis.com/v1/images:annotate?key=${creds.GOOGLE_VISION_API_KEY}`;
