@@ -1,0 +1,10 @@
+{
+  "name": "vision",
+  "version": "1.0.0",
+  "description": "Detección de objetos con Google Cloud Vision API",
+  "main": "vision.js",
+  "type": "module",
+  "scripts": {
+    "start": "node vision.js"
+  }
+}

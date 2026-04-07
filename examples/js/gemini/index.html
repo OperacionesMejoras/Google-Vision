@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gemini — Analizador de Imágenes</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: sans-serif; max-width: 960px; margin: 24px auto; padding: 0 16px; color: #1a1a1a; }
+    h2 { margin-bottom: 4px; }
+    p.sub { color: #555; margin-top: 0; }
+
+    /* ── Secciones plegables ── */
+    .section { border: 1px solid #ddd; border-radius: 6px; margin-bottom: 14px; }
+    .section summary {
+      padding: 10px 14px; font-weight: bold; cursor: pointer;
+      background: #f7f7f7; border-radius: 6px; user-select: none;
+    }
+    .section[open] summary { border-radius: 6px 6px 0 0; border-bottom: 1px solid #ddd; }
+    .section-body { padding: 14px; }
+
+    /* ── Imágenes ── */
+    #previewGrid {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;
+    }
+    .thumb-card {
+      position: relative; border: 2px solid #ccc; border-radius: 4px;
+      width: 130px; text-align: center; font-size: 12px; overflow: hidden;
+    }
+    .thumb-card img { width: 130px; height: 100px; object-fit: cover; display: block; }
+    .thumb-card .fname { padding: 4px 4px 6px; word-break: break-all; }
+    .thumb-card .remove-btn {
+      position: absolute; top: 3px; right: 3px; background: rgba(0,0,0,.5);
+      color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px;
+      cursor: pointer; font-size: 12px; line-height: 20px; padding: 0;
+    }
+
+    /* ── System Prompt ── */
+    #promptTextarea {
+      width: 100%; height: 280px; font-family: monospace; font-size: 13px;
+      padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical;
+    }
+
+    /* ── Parámetros ── */
+    .params { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; }
+    .params label { display: flex; flex-direction: column; font-size: 13px; gap: 4px; }
+    .params select, .params input[type=number] { padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; }
+    .params input[type=range] { width: 140px; }
+
+    /* ── Botón principal ── */
+    #btnClassify:disabled { background: #aaa !important; cursor: default; }
+    #btnClassify:hover:not(:disabled) { background: #1558b0 !important; }
+    #btnClearResults:hover { background: #e8e8e8; }
+
+    /* ── Status ── */
+    #status { font-weight: bold; min-height: 1.4em; margin-bottom: 10px; }
+
+    /* ── Resultados ── */
+    .result-card {
+      border: 1px solid #ddd; border-radius: 6px; margin-bottom: 14px; overflow: hidden;
+    }
+    .result-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px; background: #f0f4ff;
+      border-bottom: 1px solid #ddd;
+    }
+    .result-header img { width: 70px; height: 52px; object-fit: cover; border-radius: 4px; }
+    .result-header .meta { flex: 1; }
+    .result-header .meta strong { font-size: 15px; }
+    .result-header .metrics { font-size: 12px; color: #555; text-align: right; white-space: nowrap; }
+    .result-body { padding: 14px; }
+
+    .conf-alta   { color: #2a9d8f; font-weight: bold; }
+    .conf-media  { color: #e9c46a; font-weight: bold; }
+    .conf-baja   { color: #e63946; font-weight: bold; }
+
+    .field-row { display: flex; gap: 8px; margin-bottom: 6px; font-size: 14px; }
+    .field-label { color: #555; min-width: 140px; }
+
+    .token-bar-wrap { background: #eee; border-radius: 4px; height: 8px; flex: 1; overflow: hidden; }
+    .token-bar      { height: 100%; border-radius: 4px; background: #1a73e8; }
+
+    details.raw-json summary { font-size: 13px; cursor: pointer; color: #555; margin-top: 10px; }
+    pre.raw { white-space: pre-wrap; font-size: 12px; background: #f4f4f4;
+              border: 1px solid #ddd; padding: 10px; border-radius: 4px;
+              max-height: 300px; overflow-y: auto; }
+
+    .error-card { background: #fff3f3; border: 1px solid #e63946;
+                  border-radius: 6px; padding: 14px; color: #c0392b; margin-bottom: 12px; }
+
+    /* ── Header con botón de credenciales ── */
+    .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    .page-header h2, .page-header p { margin: 0; }
+    #btnOpenCreds {
+      display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+      padding: 6px 12px; font-size: 13px; cursor: pointer;
+      border: 1px solid #ccc; border-radius: 6px; background: #f7f7f7;
+    }
+    #btnOpenCreds:hover { background: #eee; }
+    .key-indicator { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .key-ok      { background: #2a9d8f; }
+    .key-missing { background: #e63946; }
+
+    /* ── Modal overlay ── */
+    #credsOverlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.5); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    #credsOverlay.open { display: flex; }
+    #credsModal {
+      background: #fff; border-radius: 10px; padding: 28px 32px;
+      width: 100%; max-width: 440px; box-shadow: 0 8px 32px rgba(0,0,0,.2);
+    }
+    #credsModal h3 { margin: 0 0 6px; }
+    #credsModal p  { margin: 0 0 20px; font-size: 13px; color: #555; }
+    .creds-field { margin-bottom: 16px; }
+    .creds-field label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px; }
+    .creds-field input {
+      width: 100%; padding: 8px 10px; font-size: 14px; font-family: monospace;
+      border: 1px solid #ccc; border-radius: 6px;
+    }
+    .creds-field input.invalid { border-color: #e63946; }
+    .creds-field .hint { font-size: 12px; color: #777; margin-top: 4px; }
+    .creds-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .btn-save {
+      padding: 8px 20px; background: #1a73e8; color: #fff;
+      border: none; border-radius: 6px; font-size: 14px; cursor: pointer;
+    }
+    .btn-save:hover { background: #1558b0; }
+    .btn-cancel {
+      padding: 8px 16px; background: none; border: 1px solid #ccc;
+      border-radius: 6px; font-size: 14px; cursor: pointer;
+    }
+    .btn-cancel:hover { background: #f5f5f5; }
+    .creds-error { color: #e63946; font-size: 13px; margin-top: 10px; display: none; }
+  </style>
+</head>
+<body>
+
+<!-- Modal de credenciales -->
+<div id="credsOverlay">
+  <div id="credsModal">
+    <h3>Credenciales — Gemini API</h3>
+    <p>La clave se guarda en <code>localStorage</code> del navegador y nunca sale de tu equipo.</p>
+
+    <div class="creds-field">
+      <label for="inputGeminiKey">Gemini API Key</label>
+      <input type="password" id="inputGeminiKey" placeholder="AIzaSy…" autocomplete="off">
+      <div class="hint">
+        Conseguila en
+        <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio → Get API Key</a>
+      </div>
+    </div>
+
+    <div class="creds-error" id="credsError">Ingresá una API key válida.</div>
+
+    <div class="creds-actions">
+      <button class="btn-cancel" id="btnCancelCreds">Cancelar</button>
+      <button class="btn-save"   id="btnSaveCreds">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Header -->
+<div class="page-header">
+  <div>
+    <h2>Gemini — Analizador de Imágenes</h2>
+    <p class="sub">Seleccioná imágenes, cargá un system prompt y escribí una consulta opcional. La previsualización se muestra antes de enviar.</p>
+  </div>
+  <button id="btnOpenCreds">
+    <span class="key-indicator" id="keyIndicator"></span>
+    Credenciales
+  </button>
+</div>
+
+<!-- ── 1. Imágenes ─────────────────────────────── -->
+<details class="section" open>
+  <summary>1. Imágenes</summary>
+  <div class="section-body">
+    <input type="file" id="fileInput" accept="image/*" multiple>
+    <div id="previewGrid"></div>
+  </div>
+</details>
+
+<!-- ── 2. System Prompt ───────────────────────── -->
+<details class="section" open>
+  <summary>2. System Prompt</summary>
+  <div class="section-body">
+    <div style="display:flex; gap:10px; align-items:center; margin-bottom:8px">
+      <label style="font-size:13px">
+        Importar desde archivo (.md / .txt):
+        <input type="file" id="promptFile" accept=".md,.txt" style="margin-left:6px">
+      </label>
+      <button id="btnClearPrompt" style="font-size:12px; padding:4px 8px">Limpiar</button>
+    </div>
+    <textarea id="promptTextarea" placeholder="Pegá o escribí el system prompt aquí…"></textarea>
+    <p style="font-size:12px; color:#777; margin:4px 0 0">
+      Caracteres: <span id="charCount">0</span>
+    </p>
+  </div>
+</details>
+
+<!-- ── 3. Consulta adicional ──────────────────── -->
+<details class="section" open>
+  <summary>3. Consulta adicional <span style="font-weight:normal; color:#888; font-size:12px">(opcional)</span></summary>
+  <div class="section-body">
+    <p style="margin:0 0 8px; font-size:13px; color:#555">
+      Mensaje que se envía junto con las imágenes como instrucción de usuario.
+      Si está vacío se usa <em>"Analizá esta imagen."</em>
+    </p>
+    <textarea id="optionalPrompt"
+      placeholder="Ej: Enfocate en el sector posterior. / ¿Hay signos de desadaptación? / Describí en detalle."
+      style="width:100%; height:80px; font-family:monospace; font-size:13px;
+             padding:8px; border:1px solid #ccc; border-radius:4px; resize:vertical;">
+    </textarea>
+  </div>
+</details>
+
+<!-- ── 4. Parámetros ──────────────────────────── -->
+<details class="section">
+  <summary>4. Parámetros del modelo</summary>
+  <div class="section-body">
+    <div class="params">
+
+      <label>
+        Modelo
+        <select id="modelSelect"></select>
+      </label>
+
+      <label>
+        Temperatura: <span id="tempVal">0.2</span>
+        <input type="range" id="tempRange" min="0" max="2" step="0.1" value="0.2">
+        <span style="font-size:11px; color:#777">0 = determinista · 2 = creativo</span>
+      </label>
+
+      <label>
+        Max output tokens
+        <input type="number" id="maxTokens" min="64" max="8192" value="1024" style="width:90px">
+      </label>
+
+      <label style="justify-content:flex-end">
+        <input type="checkbox" id="chkThinking"> Activar thinking (2.5 únicamente)
+        <span style="font-size:11px; color:#777">Mueve el budget de razonamiento interno</span>
+      </label>
+
+    </div>
+  </div>
+</details>
+
+<!-- ── Acciones ───────────────────────────────── -->
+<div style="display:flex; gap:10px; margin-bottom:16px">
+  <button id="btnClassify" disabled style="flex:1; padding:12px; background:#1a73e8; color:#fff;
+    border:none; border-radius:6px; font-size:16px; font-weight:bold; cursor:pointer;">
+    Analizar imágenes
+  </button>
+  <button id="btnClearResults" style="padding:12px 18px; background:#f5f5f5; border:1px solid #ccc;
+    border-radius:6px; font-size:14px; cursor:pointer;" title="Limpiar resultados procesados">
+    Limpiar resultados
+  </button>
+</div>
+
+<p id="status"></p>
+
+<!-- ── Resultados ────────────────────────────── -->
+<div id="results"></div>
+
+<script src="gemini-config.js"></script>
+<script src="gemini-app.js"></script>
+
+<!-- Modal de credenciales -->
+<script>
+  const overlay      = document.getElementById("credsOverlay");
+  const inputKey     = document.getElementById("inputGeminiKey");
+  const keyIndicator = document.getElementById("keyIndicator");
+  const credsError   = document.getElementById("credsError");
+
+  function updateIndicator() {
+    const ok = !!localStorage.getItem("gemini_api_key");
+    keyIndicator.className = "key-indicator " + (ok ? "key-ok" : "key-missing");
+  }
+
+  function openModal() {
+    const saved = localStorage.getItem("gemini_api_key") || "";
+    inputKey.value = saved ? "••••••••••••••••" + saved.slice(-4) : "";
+    inputKey.dataset.hasExisting = saved ? "1" : "0";
+    credsError.style.display = "none";
+    inputKey.classList.remove("invalid");
+    overlay.classList.add("open");
+    if (!saved) inputKey.focus();
+  }
+
+  function closeModal() {
+    overlay.classList.remove("open");
+  }
+
+  document.getElementById("btnOpenCreds").addEventListener("click", openModal);
+  document.getElementById("btnCancelCreds").addEventListener("click", closeModal);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
+
+  inputKey.addEventListener("focus", () => {
+    if (inputKey.dataset.hasExisting === "1") {
+      inputKey.value = "";
+      inputKey.dataset.hasExisting = "0";
+    }
+  });
+
+  document.getElementById("btnSaveCreds").addEventListener("click", () => {
+    const val = inputKey.value.trim();
+
+    if (!val && inputKey.dataset.hasExisting === "1") { closeModal(); return; }
+
+    if (!val || val.length < 20) {
+      credsError.style.display = "block";
+      inputKey.classList.add("invalid");
+      return;
+    }
+
+    localStorage.setItem("gemini_api_key", val);
+
+    // Actualizar variable de runtime sin recargar
+    GEMINI_API_KEY = val;
+
+    updateIndicator();
+    closeModal();
+  });
+
+  // Mostrar modal automáticamente si no hay clave guardada
+  updateIndicator();
+  if (!localStorage.getItem("gemini_api_key")) openModal();
+</script>
+</body>
+</html>
