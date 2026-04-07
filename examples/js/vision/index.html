@@ -2,235 +2,175 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Google Vision — Object Detection</title>
-  <style>
-    body { font-family: sans-serif; max-width: 900px; margin: 20px auto; padding: 0 16px; }
-    fieldset { margin-bottom: 16px; display: flex; gap: 24px; flex-wrap: wrap; align-items: center; }
-    label { display: flex; flex-direction: column; font-size: 13px; gap: 4px; }
-    input[type=range] { width: 160px; }
-    .control-row { display: flex; align-items: center; gap: 8px; }
-    #status { font-weight: bold; min-height: 1.4em; }
-    canvas { border: 1px solid #ccc; max-width: 100%; }
-    #rawJson { white-space: pre-wrap; font-size: 12px; background: #f4f4f4;
-               border: 1px solid #ddd; padding: 12px; border-radius: 4px;
-               max-height: 400px; overflow-y: auto; }
-    details summary { cursor: pointer; font-weight: bold; margin: 12px 0 4px; }
-
-    /* ── Header con botón de credenciales ── */
-    .page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .page-header h2 { margin: 0; }
-    #btnOpenCreds {
-      display: flex; align-items: center; gap: 6px;
-      padding: 6px 12px; font-size: 13px; cursor: pointer;
-      border: 1px solid #ccc; border-radius: 6px; background: #f7f7f7;
-      white-space: nowrap;
-    }
-    #btnOpenCreds:hover { background: #eee; }
-    .key-indicator { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-    .key-ok  { background: #2a9d8f; }
-    .key-missing { background: #e63946; }
-
-    /* ── Modal overlay ── */
-    #credsOverlay {
-      display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,.5); z-index: 1000;
-      align-items: center; justify-content: center;
-    }
-    #credsOverlay.open { display: flex; }
-    #credsModal {
-      background: #fff; border-radius: 10px; padding: 28px 32px;
-      width: 100%; max-width: 440px; box-shadow: 0 8px 32px rgba(0,0,0,.2);
-    }
-    #credsModal h3 { margin: 0 0 6px; }
-    #credsModal p  { margin: 0 0 20px; font-size: 13px; color: #555; }
-    .creds-field { margin-bottom: 16px; }
-    .creds-field label { font-size: 13px; font-weight: bold; margin-bottom: 4px; }
-    .creds-field input {
-      width: 100%; padding: 8px 10px; font-size: 14px; font-family: monospace;
-      border: 1px solid #ccc; border-radius: 6px;
-    }
-    .creds-field input.invalid { border-color: #e63946; }
-    .creds-field .hint { font-size: 12px; color: #777; margin-top: 4px; }
-    .creds-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-    .btn-save {
-      padding: 8px 20px; background: #1a73e8; color: #fff;
-      border: none; border-radius: 6px; font-size: 14px; cursor: pointer;
-    }
-    .btn-save:hover { background: #1558b0; }
-    .btn-cancel {
-      padding: 8px 16px; background: none; border: 1px solid #ccc;
-      border-radius: 6px; font-size: 14px; cursor: pointer;
-    }
-    .btn-cancel:hover { background: #f5f5f5; }
-    .creds-error { color: #e63946; font-size: 13px; margin-top: 10px; display: none; }
-  </style>
+  <title>Vision Pro Analyzer</title>
+  <link rel="stylesheet" href="index.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
 </head>
 <body>
 
-  <!-- Header -->
-  <div class="page-header">
-    <div>
-      <h2>Google Vision API — Object Localization</h2>
-      <p style="margin:4px 0 0; color:#555">Selecciona una imagen. La llamada a la API se ejecuta automáticamente.</p>
+  <header>
+    <div></div>
+    <div style="display: flex; gap: 16px; align-items: center;">
+      <button id="themeToggle" title="Cambiar Tema">
+        <i class="fas fa-moon"></i>
+      </button>
+      <div id="status">Listo</div>
+      <button id="btnOpenCreds" class="btn btn-outline" style="padding: 8px 16px; font-size: 0.85rem;">
+        <span id="keyIndicator"></span>
+        API Key
+      </button>
     </div>
-    <button id="btnOpenCreds">
-      <span class="key-indicator" id="keyIndicator"></span>
-      Credenciales
-    </button>
-  </div>
+  </header>
+
+  <main class="app-container">
+    
+    <!-- Sidebar Izquierdo: Configuración -->
+    <aside class="panel">
+      <div class="panel-content">
+        <div class="panel-title">
+          Entrada e Imagen
+          <label class="webcam-toggle" title="Activar cámara web">
+            <input type="checkbox" id="toggleWebcam">
+            <span class="webcam-toggle-track">
+              <i class="fas fa-camera"></i>
+            </span>
+          </label>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" class="hidden">
+        <button id="btnSelectImg" class="btn btn-outline" style="width: 100%;">Seleccionar Imagen</button>
+        <div id="webcamStatus" class="webcam-status hidden">
+          <span class="webcam-dot"></span> Cámara activa — pulsa Analizar para capturar
+        </div>
+        
+        <details class="tree-node" id="featuresTree" style="margin-top:12px;">
+          <summary class="tree-header">
+            <i class="fas fa-chevron-right"></i>
+            <span>Features API</span>
+          </summary>
+          <label class="tree-item feat-row"><input type="checkbox" id="featFace" checked><div class="feat-content"><span class="feat-name">Rostros</span><span class="feat-desc">Detecta rostros y sus características</span></div></label>
+          <label class="tree-item feat-row"><input type="checkbox" id="featObj" checked><div class="feat-content"><span class="feat-name">Objetos</span><span class="feat-desc">Identifica objetos y su ubicación</span></div></label>
+          <label class="tree-item feat-row"><input type="checkbox" id="featLabel" checked><div class="feat-content"><span class="feat-name">Etiquetas</span><span class="feat-desc">Clasifica el contenido de la imagen</span></div></label>
+          <label class="tree-item feat-row"><input type="checkbox" id="featText"><div class="feat-content"><span class="feat-name">Texto OCR</span><span class="feat-desc">Extrae texto de la imagen</span></div></label>
+          <label class="tree-item feat-row"><input type="checkbox" id="featLogo"><div class="feat-content"><span class="feat-name">Logos</span><span class="feat-desc">Detecta marcas comerciales</span></div></label>
+          <label class="tree-item feat-row"><input type="checkbox" id="featSafe"><div class="feat-content"><span class="feat-name">Safe Search</span><span class="feat-desc">Filtra contenido adulto/peligroso</span></div></label>
+          <label class="tree-item feat-row"><input type="checkbox" id="featProps"><div class="feat-content"><span class="feat-name">Colores</span><span class="feat-desc">Extrae paleta de colores dominante</span></div></label>
+          <label class="tree-item feat-row"><input type="checkbox" id="featWeb"><div class="feat-content"><span class="feat-name">Búsqueda Web</span><span class="feat-desc">Busca imágenes similares en la web</span></div></label>
+        </details>
+
+        <div class="panel-title" style="margin-top:12px">Parámetros API</div>
+        <div class="control-group">
+          <label>Confianza Mínima: <span id="scoreVal">60%</span></label>
+          <input type="range" id="minScore" min="0" max="100" value="60" step="5">
+        </div>
+
+        <div class="control-group" style="margin-top: 10px;">
+          <label>Máx. Resultados: <span id="maxResultsVal">20</span></label>
+          <input type="range" id="maxResults" min="5" max="100" value="20" step="5">
+        </div>
+        
+      </div>
+
+      <button id="btnRun" class="btn btn-primary" disabled style="width: 100%;">
+        <i class="fas fa-magic"></i> Analizar Imagen
+      </button>
+    </aside>
+
+    <!-- Centro: Viewport -->
+    <section class="viewport">
+      <div class="canvas-wrapper">
+        <canvas id="canvas"></canvas>
+        <!-- Botón flotante para exportar imagen -->
+        <button id="btnExportIMG" class="btn-floating" title="Descargar Imagen Analizada">
+          <i class="fas fa-download"></i>
+        </button>
+      </div>
+      
+      </div>
+    </section>
+
+    <!-- Sidebar Derecho: Capas e Información -->
+    <aside class="panel">
+      <div class="panel-content">
+        <div class="panel-title">Capas Visuales</div>
+        <div class="tree-view" id="layerTree">
+          <details class="tree-node">
+            <summary class="tree-header">
+              <i class="fas fa-chevron-right"></i>
+              <span>Objetos Detectados</span>
+            </summary>
+            <label class="tree-item"><input type="checkbox" data-layer="objects"> Bounding Boxes</label>
+            <label class="tree-item"><input type="checkbox" data-layer="logos"> Logos</label>
+          </details>
+
+          <details class="tree-node">
+            <summary class="tree-header">
+              <i class="fas fa-chevron-right"></i>
+              <span>Rostro Detallado</span>
+            </summary>
+            <label class="tree-item"><input type="checkbox" data-layer="face_box"> Contorno Rostro</label>
+            <label class="tree-item"><input type="checkbox" data-layer="face_land"> Landmarks (Puntos)</label>
+            <label class="tree-item"><input type="checkbox" data-layer="face_outline"> Siluetas (Líneas)</label>
+            <label class="tree-item"><input type="checkbox" data-layer="face_gradient"> Gradiente de Profundidad (Z)</label>
+          </details>
+
+          <details class="tree-node">
+            <summary class="tree-header">
+              <i class="fas fa-chevron-right"></i>
+              <span>Texto y OCR</span>
+            </summary>
+            <label class="tree-item"><input type="checkbox" data-layer="text_boxes"> Cajas de Texto</label>
+            <label class="tree-item"><input type="checkbox" data-layer="text_content"> Contenido OCR</label>
+          </details>
+
+          <details class="tree-node">
+            <summary class="tree-header">
+              <i class="fas fa-chevron-right"></i>
+              <span>Metadatos</span>
+            </summary>
+            <label class="tree-item"><input type="checkbox" data-layer="labels_overlay"> Lista de Etiquetas (Overlay)</label>
+          </details>
+        </div>
+
+        <div class="panel-title" style="margin-top:20px">Resultados Clave</div>
+        <ul id="resultList">
+          <li style="color:var(--text-muted); text-align:center;">Sube una imagen para ver datos</li>
+        </ul>
+
+        <div style="margin-top:auto; padding-top:20px;">
+          <details id="rawSection">
+            <summary class="panel-title" style="cursor:pointer">
+              <span>JSON Crudo (Google Cloud Vision)</span>
+              <button class="btn btn-outline btn-json-download" style="padding: 4px 8px; font-size: 10px; height: 24px; border-color: var(--primary-glow);" title="Guardar JSON">
+                <i class="fas fa-file-code"></i>
+              </button>
+            </summary>
+            <pre id="rawJson"></pre>
+          </details>
+        </div>
+      </div>
+    </aside>
+
+  </main>
 
   <!-- Modal de credenciales -->
   <div id="credsOverlay">
     <div id="credsModal">
-      <h3>Credenciales — Google Vision API</h3>
-      <p>La clave se guarda en <code>localStorage</code> del navegador y nunca sale de tu equipo.</p>
+      <h3 style="margin:0 0 8px">Google Vision API Key</h3>
+      <p style="font-size:13px; color:var(--text-muted); margin:0 0 24px">La clave se guarda localmente en tu navegador.</p>
 
       <div class="creds-field">
-        <label for="inputVisionKey">Google Vision API Key</label>
-        <input type="password" id="inputVisionKey" placeholder="AIzaSy…" autocomplete="off">
-        <div class="hint">
-          Conseguila en
-          <a href="https://console.cloud.google.com/apis/credentials" target="_blank">
-            Google Cloud Console → Credenciales
-          </a>
-          · API habilitada: <em>Cloud Vision API</em>
-        </div>
+        <input type="password" id="inputVisionKey" placeholder="Tu API Key de Google Cloud" autocomplete="off">
       </div>
 
-      <div class="creds-error" id="credsError">Ingresá una API key válida.</div>
+      <div id="credsError" style="color:#ef4444; font-size:12px; margin-top:8px; display:none;">Clave no válida</div>
 
-      <div class="creds-actions">
-        <button class="btn-cancel" id="btnCancelCreds">Cancelar</button>
-        <button class="btn-save"   id="btnSaveCreds">Guardar</button>
+      <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:32px;">
+        <button class="btn btn-outline" id="btnCancelCreds" style="width: auto;">Cancelar</button>
+        <button class="btn btn-primary" id="btnSaveCreds" style="width: auto;">Guardar</button>
       </div>
     </div>
   </div>
 
-  <br>
-
-  <input type="file" id="fileInput" accept="image/*">
-
-  <fieldset>
-    <legend>Parámetros</legend>
-
-    <label>
-      Umbral de confianza: <span id="scoreVal">60%</span>
-      <div class="control-row">
-        <input type="range" id="minScore" min="0" max="100" value="60" step="5">
-      </div>
-    </label>
-
-    <label>
-      Máx. resultados
-      <input type="number" id="maxResults" min="1" max="50" value="20" style="width:60px">
-    </label>
-
-    <label>
-      Features
-      <div>
-        <input type="checkbox" id="featObj" checked> OBJECT_LOCALIZATION
-        <br>
-        <input type="checkbox" id="featLabel" checked> LABEL_DETECTION
-        <br>
-        <input type="checkbox" id="featText"> TEXT_DETECTION
-        <br>
-        <input type="checkbox" id="featFace"> FACE_DETECTION
-        <br>
-        <input type="checkbox" id="featLogo"> LOGO_DETECTION
-        <br>
-        <input type="checkbox" id="featSafe"> SAFE_SEARCH_DETECTION
-        <br>
-        <input type="checkbox" id="featProps"> IMAGE_PROPERTIES
-        <br>
-        <input type="checkbox" id="featWeb"> WEB_DETECTION
-      </div>
-    </label>
-
-    <button id="btnRun" disabled>Re-analizar</button>
-  </fieldset>
-
-  <p id="status"></p>
-
-  <canvas id="canvas"></canvas>
-
-  <br>
-
-  <ul id="resultList"></ul>
-
-  <details id="rawSection">
-    <summary>JSON crudo de la API</summary>
-    <pre id="rawJson"></pre>
-  </details>
-
-  <!-- Config primero, luego lógica -->
-  <script src="vision-config.js"></script>
-  <script src="vision-app.js"></script>
-
-  <!-- Modal de credenciales -->
-  <script>
-    const overlay      = document.getElementById("credsOverlay");
-    const inputKey     = document.getElementById("inputVisionKey");
-    const keyIndicator = document.getElementById("keyIndicator");
-    const credsError   = document.getElementById("credsError");
-
-    function updateIndicator() {
-      const ok = !!localStorage.getItem("vision_api_key");
-      keyIndicator.className = "key-indicator " + (ok ? "key-ok" : "key-missing");
-    }
-
-    function openModal() {
-      const saved = localStorage.getItem("vision_api_key") || "";
-      // Mostrar solo los últimos 4 caracteres si ya hay una clave guardada
-      inputKey.value = saved ? "••••••••••••••••" + saved.slice(-4) : "";
-      inputKey.dataset.hasExisting = saved ? "1" : "0";
-      credsError.style.display = "none";
-      inputKey.classList.remove("invalid");
-      overlay.classList.add("open");
-      if (!saved) inputKey.focus();
-    }
-
-    function closeModal() {
-      overlay.classList.remove("open");
-    }
-
-    document.getElementById("btnOpenCreds").addEventListener("click", openModal);
-    document.getElementById("btnCancelCreds").addEventListener("click", closeModal);
-    overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
-
-    // Limpiar placeholder al hacer foco si es la máscara
-    inputKey.addEventListener("focus", () => {
-      if (inputKey.dataset.hasExisting === "1") {
-        inputKey.value = "";
-        inputKey.dataset.hasExisting = "0";
-      }
-    });
-
-    document.getElementById("btnSaveCreds").addEventListener("click", () => {
-      const val = inputKey.value.trim();
-
-      // Si no tocaron el campo y ya había clave, no hacer nada
-      if (!val && inputKey.dataset.hasExisting === "1") { closeModal(); return; }
-
-      if (!val || val.length < 20) {
-        credsError.style.display = "block";
-        inputKey.classList.add("invalid");
-        return;
-      }
-
-      localStorage.setItem("vision_api_key", val);
-
-      // Actualizar variables de runtime sin recargar
-      VISION_API_KEY  = val;
-      VISION_ENDPOINT = `https://vision.googleapis.com/v1/images:annotate?key=${val}`;
-
-      updateIndicator();
-      closeModal();
-    });
-
-    // Mostrar modal automáticamente si no hay clave guardada
-    updateIndicator();
-    if (!localStorage.getItem("vision_api_key")) openModal();
-  </script>
-
+  <script type="module" src="vision-app.js"></script>
 </body>
 </html>
