@@ -11,7 +11,7 @@ export const BASE_DIR     = join(EXAMPLES_DIR, "..");   // raíz del proyecto
 export const SKILLS_DIR   = join(EXAMPLES_DIR, "skills");
 
 // ─── Credenciales ─────────────────────────────────────────────
-const creds = JSON.parse(readFileSync(join(BASE_DIR, "credencials", "cred.json"), "utf-8"));
+const creds = JSON.parse(readFileSync(join(BASE_DIR, "credencials", "your_credentials_file.json"), "utf-8"));
 
 export const GEMINI_API_KEY = creds.GEMINI_API_KEY;
 export const GEMINI_MODEL   = "gemini-2.5-flash";
